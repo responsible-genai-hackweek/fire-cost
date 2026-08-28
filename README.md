@@ -1,5 +1,13 @@
 # fire-cost
 
+**Fire moves fast. Recovery doesn't.**
+
+A wildfire can consume a neighborhood in hours. What comes after — mapping the
+damage, tracking what's rebuilt, what's abandoned — takes years. This archive
+follows both timescales: the Palisades & Eaton fires, mapped from satellite data in
+the days after they burned, and Lahaina, still being counted building by building
+two years on.
+
 Wildfire damage and recovery analysis — fire perimeters, satellite burn-severity
 analysis, and building-detection results for recent US and Canadian wildfires.
 
