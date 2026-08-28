@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lahaina Building Recovery — Surviving (Aug 2023) vs Standing (2025)</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%230d1117'/><rect x='2' y='2' width='5.5' height='12' fill='none' stroke='%23ff3b30' stroke-width='1.5'/><rect x='8.5' y='2' width='5.5' height='12' fill='none' stroke='%2300e5ff' stroke-width='1.5'/></svg>">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<!-- Browser bundle of leaflet-side-by-side (the npm tarball ships un-bundled CommonJS). -->
+<script src="https://cdn.jsdelivr.net/gh/digidem/leaflet-side-by-side@gh-pages/leaflet-side-by-side.js"></script>
+
+<!-- Loaded AFTER the plugin so these override the CSS it injects at script-eval time. -->
+<style>
+  :root {
+    --bg: #0d1117;
+    --chrome: rgba(13, 17, 23, 0.92);
+    --border: rgba(255, 255, 255, 0.14);
+    --text: #e6edf3;
+    --muted: #97a3b0;
+    --postfire: #ff3b30;
+    --recovery: #00e5ff;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  /* ---------- title bar ---------- */
+  #titlebar {
+    flex: 0 0 auto;
+    padding: 10px 16px;
+    background: #11161d;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+  }
+  #titlebar h1 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 650;
+    letter-spacing: 0.2px;
+  }
+  #titlebar .sub {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* ---------- map ---------- */
+  #map {
+    flex: 1 1 auto;
+    min-height: 0;
+    background: #05070a;
+  }
+
+  /* ---------- control panel ---------- */
+  #panel {
+    background: var(--chrome);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    width: 268px;
+    max-width: calc(100vw - 24px);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+  }
+  #panelHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin: -2px 0 0;
+    padding: 0;
+    background: none;
+    border: 0;
+    color: var(--text);
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+    text-align: left;
+  }
+  #panelHeader .chev {
+    margin-left: auto;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  #panel.collapsed #panelHeader .chev { transform: rotate(-90deg); }
+  #panel.collapsed #panelBody { display: none; }
+  #panel:not(.collapsed) #panelHeader { margin-bottom: 10px; }
+
+  #panel h2 {
+    margin: 0 0 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  #panel section + section {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  #conf {
+    width: 100%;
+    margin: 4px 0 2px;
+    accent-color: #58a6ff;
+    cursor: pointer;
+  }
+  .conf-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+  #confValue {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .scale {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  #counts {
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.6;
+  }
+  #counts .n { font-weight: 700; }
+  #counts .grp { white-space: nowrap; }
+  #counts .sep { color: var(--muted); margin: 0 6px; }
+
+  .toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+    cursor: pointer;
+    user-select: none;
+  }
+  .toggle input { margin: 0; cursor: pointer; }
+  .swatch {
+    flex: 0 0 auto;
+    width: 15px;
+    height: 15px;
+    border-radius: 3px;
+    border: 2px solid currentColor;
+    background: currentColor;
+    /* matches the 0.12 layer fill against the dark panel */
+    box-shadow: inset 0 0 0 10px rgba(13, 17, 23, 0.88);
+  }
+  .swatch.postfire { color: var(--postfire); }
+  .swatch.recovery { color: var(--recovery); }
+  .toggle .name { flex: 1 1 auto; }
+  .toggle .side {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .hint {
+    margin: 8px 0 0;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* ---------- footer ---------- */
+  #footer {
+    flex: 0 0 auto;
+    padding: 8px 16px;
+    background: #11161d;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+  #footer .attr {
+    color: #c2ccd6;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 2px 20px;
+  }
+  #footer .credit { color: var(--muted); }
+  #footer .sources { margin-top: 3px; }
+  #footer .note { margin-top: 3px; }
+  #footer a {
+    color: #58a6ff;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(88, 166, 255, 0.35);
+  }
+  #footer a:hover { border-bottom-color: #58a6ff; }
+  #footer strong { color: #e6edf3; font-weight: 600; }
+
+  /* ---------- swipe divider (overrides the plugin's injected CSS) ---------- */
+  .leaflet-sbs-divider {
+    width: 2px;
+    margin-left: -1px;
+    background: #fff;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+  }
+  .leaflet-sbs .leaflet-sbs-range::-webkit-slider-thumb {
+    height: 34px; width: 34px; border-radius: 17px;
+    border: 2px solid #fff;
+    background: rgba(13, 17, 23, 0.85);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 34 34'><g fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 12l-5 5 5 5'/><path d='M20 12l5 5-5 5'/></g></svg>");
+    background-size: 34px 34px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
+  }
+  .leaflet-sbs .leaflet-sbs-range::-moz-range-thumb {
+    height: 34px; width: 34px; border-radius: 17px;
+    border: 2px solid #fff;
+    background: rgba(13, 17, 23, 0.85);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 34 34'><g fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 12l-5 5 5 5'/><path d='M20 12l5 5-5 5'/></g></svg>");
+    background-size: 34px 34px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
+  }
+
+  /* ---------- swipe divider drag handle ---------- */
+  /* The plugin makes only its range thumb draggable, and that thumb is a
+     pseudo-element on a pointer-events:none input whose box is 0px tall, so
+     current Chrome never hit-tests it and every grab fell through to the map.
+     This transparent strip tracks the divider and owns the drag instead. */
+  #sbsGrab {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 28px;
+    margin-left: -14px;
+    z-index: 999;              /* above the divider, below the controls (1000) */
+    cursor: ew-resize;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    background: transparent;
+    transition: background 0.12s ease;
+  }
+  #sbsGrab:hover, #sbsGrab.dragging { background: rgba(255, 255, 255, 0.12); }
+
+  /* ---------- side labels ---------- */
+  .side-label {
+    position: absolute;
+    bottom: 10px;
+    z-index: 500;
+    padding: 4px 9px;
+    border-radius: 5px;
+    background: var(--chrome);
+    border: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #labelLeft  { left: 10px;  color: var(--postfire); }
+  #labelRight { right: 10px; color: var(--recovery); }
+
+  /* ---------- leaflet chrome ---------- */
+  .leaflet-container { background: #05070a; }
+  .leaflet-control-attribution {
+    background: rgba(13, 17, 23, 0.8) !important;
+    color: var(--muted) !important;
+    font-size: 10px;
+  }
+  .leaflet-control-attribution a { color: #7d8b99 !important; }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+    background: var(--chrome);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .leaflet-popup-content { margin: 10px 12px; font-size: 12px; }
+  .popup-title { font-weight: 700; margin-bottom: 4px; }
+  .popup-conf {
+    font-size: 18px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .popup-meta { color: var(--muted); font-size: 11px; margin-top: 3px; }
+
+  /* ---------- status overlay ---------- */
+  #status {
+    position: absolute;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(5, 7, 10, 0.86);
+    text-align: center;
+    padding: 24px;
+  }
+  #status[hidden] { display: none; }
+  #status .box { max-width: 520px; }
+  #status .err { color: #ff7b72; font-weight: 650; margin-bottom: 8px; }
+  #status code {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: #11161d;
+    border: 1px solid var(--border);
+    font-size: 12px;
+    color: #e6edf3;
+  }
+
+  @media (max-width: 640px) {
+    #titlebar h1 { font-size: 14px; }
+    #panel { width: 220px; padding: 10px; }
+    .side-label { font-size: 10px; padding: 3px 7px; }
+    #footer { font-size: 10px; }
+  }
+</style>
+</head>
+
+<body>
+<div id="app">
+  <header id="titlebar">
+    <h1>Lahaina Building Recovery — Standing (Aug 2023) vs Standing (2025)</h1>
+    <span class="sub">Left: buildings still standing 11 days after the fire · Right: buildings standing in 2025, survivors and rebuilds combined · drag to swipe</span>
+  </header>
+
+  <div id="map">
+    <div id="labelLeft" class="side-label">← Surviving · Aug 14 2023</div>
+    <div id="labelRight" class="side-label">Standing in 2025 →</div>
+    <div id="status"><div class="box">Loading detections…</div></div>
+  </div>
+
+  <footer id="footer">
+    <div class="attr">
+      <span>
+        Post-fire imagery: &copy; WaldoAir, Aug 14 2023 — hosted by NOAA NGS
+        &nbsp;·&nbsp;
+        2025 imagery: &copy; EagleView Inc. 2025, via Maui County GIS
+      </span>
+      <span class="credit">Produced by
+        <a href="https://element84.com/geospatial/introducing-the-new-agentic-queryable-earth-conversational-composable-and-traceable/"
+           target="_blank" rel="noopener noreferrer">Element 84's Agentic Queryable Earth</a>
+      </span>
+    </div>
+    <div class="sources">
+      <strong>Post-fire imagery (Aug 14 2023):</strong>
+      <a href="https://storms.ngs.noaa.gov/storms/2023_hawaii/index.html"
+         target="_blank" rel="noopener noreferrer">NOAA NGS event viewer</a> ·
+      <a href="https://oceanservice.noaa.gov/hazards/emergency-response-imagery.html"
+         target="_blank" rel="noopener noreferrer">about NOAA emergency response imagery</a> ·
+      <a href="https://waldoair.com/disaster-management/"
+         target="_blank" rel="noopener noreferrer">WaldoAir</a>
+    </div>
+    <div class="sources">
+      <strong>2025 imagery:</strong>
+      <a href="https://www.arcgis.com/home/item.html?id=b90c3b88980448d8be4262ce132c816e"
+         target="_blank" rel="noopener noreferrer">Maui County GIS catalog record</a> ·
+      <a href="https://tiles.arcgis.com/tiles/fsrDo0QMPlK9CkZD/arcgis/rest/services/PictometryLahainaKula_2025/MapServer"
+         target="_blank" rel="noopener noreferrer">tile service endpoint</a>
+    </div>
+    <div class="sources">
+      <strong>Detections:</strong>
+      <a href="lahaina_postfire_buildings_2023-08-14.geojson">2023 GeoJSON</a> ·
+      <a href="lahaina_recovery_buildings_2025.geojson">2025 GeoJSON</a>
+    </div>
+    <div class="note">
+      <strong>Note:</strong> Detections are model estimates; counts are noisy below ~0.6 confidence.
+      Imagery is served by NOAA NGS and Maui County but authored by third parties; neither
+      layer carries a stated public license. Contact Maui County Planning
+      (planning@mauicounty.gov) before any public or commercial reuse.
+    </div>
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var CENTER = [20.8815, -156.6734];   // Leaflet order is lat, lng
+  var ZOOM = 16;
+  var MAX_ZOOM = 21;                   // both basemaps overzoom past native
+
+  var ATTR_POSTFIRE = 'Post-fire imagery: © WaldoAir, Aug 14 2023 — hosted by NOAA NGS';
+  var ATTR_RECOVERY = '2025 imagery: © EagleView Inc. 2025, via Maui County GIS';
+
+  // ------------------------------------------------------------------ map
+  var map = L.map('map', {
+    center: CENTER,
+    zoom: ZOOM,
+    minZoom: 11,
+    maxZoom: MAX_ZOOM,
+    zoomControl: true,
+    // Attribution lives in the always-visible footer instead of a map corner,
+    // where it wrapped over the side labels on narrow screens.
+    attributionControl: false
+  });
+
+  var postfireTiles = L.tileLayer(
+    'https://stormscdn.ngs.noaa.gov/20230814a-rgb/{z}/{x}/{y}',
+    { attribution: ATTR_POSTFIRE, maxZoom: MAX_ZOOM, maxNativeZoom: 21 }
+  ).addTo(map);
+
+  // NOTE: this service uses {z}/{y}/{x} — row before column.
+  var recoveryTiles = L.tileLayer(
+    'https://tiles.arcgis.com/tiles/fsrDo0QMPlK9CkZD/arcgis/rest/services/PictometryLahainaKula_2025/MapServer/tile/{z}/{y}/{x}',
+    { attribution: ATTR_RECOVERY, maxZoom: MAX_ZOOM, maxNativeZoom: 20 }
+  ).addTo(map);
+
+  // Detections live in their own panes so each can be clipped to its own half.
+  // 450 sits above overlayPane (400) but below shadow/marker/popup panes.
+  ['detLeft', 'detRight'].forEach(function (name, i) {
+    map.createPane(name).style.zIndex = 450 + i;
+  });
+
+  var sbs = L.control.sideBySide([postfireTiles], [recoveryTiles]).addTo(map);
+
+  // ------------------------------------------------------------- datasets
+  var DATASETS = [
+    {
+      id: 'postfire',
+      file: 'lahaina_postfire_buildings_2023-08-14.geojson',
+      title: 'Surviving structure',
+      when: 'Aug 14 2023',
+      color: '#ff3b30',
+      pane: 'detLeft',
+      toggleId: 'togglePostfire',
+      countId: 'countPostfire',
+      visible: true,
+      items: [],           // { layer, score }
+      group: null,
+      count: 0
+    },
+    {
+      id: 'recovery',
+      file: 'lahaina_recovery_buildings_2025.geojson',
+      title: 'Standing structure',
+      when: '2025',
+      color: '#00e5ff',
+      pane: 'detRight',
+      toggleId: 'toggleRecovery',
+      countId: 'countRecovery',
+      visible: true,
+      items: [],
+      group: null,
+      count: 0
+    }
+  ];
+
+  function styleFor(d) {
+    return { color: d.color, weight: 1, opacity: 0.95, fillColor: d.color, fillOpacity: 0.12 };
+  }
+
+  function popupHtml(d, props) {
+    var score = typeof props.confidence_score === 'number' ? props.confidence_score : 0;
+    var pct = (score * 100).toFixed(1) + '%';
+    return '<div class="popup-title" style="color:' + d.color + '">' +
+             d.title + ' · ' + d.when + '</div>' +
+           '<div class="popup-conf">' + score.toFixed(3) + '</div>' +
+           '<div class="popup-meta">confidence_score (' + pct + ')<br>' +
+             'label: ' + (props.label || 'building') + '</div>';
+  }
+
+  function buildLayers(d, geojson) {
+    // Parse once; the confidence filter later just re-populates the group.
+    L.geoJSON(geojson, {
+      pane: d.pane,
+      style: styleFor(d),
+      onEachFeature: function (feature, layer) {
+        var props = feature.properties || {};
+        layer.bindPopup(popupHtml(d, props), { className: 'det-popup' });
+        var score = typeof props.confidence_score === 'number' ? props.confidence_score : 0;
+        d.items.push({ layer: layer, score: score });
+      }
+    });
+    d.items.sort(function (a, b) { return b.score - a.score; });
+    d.group = L.layerGroup([], { pane: d.pane });
+  }
+
+  // ----------------------------------------------------------- filtering
+  var confInput, confValue, countEls = {};
+
+  function threshold() {
+    return parseFloat(confInput.value);
+  }
+
+  function refresh() {
+    var t = threshold();
+
+    DATASETS.forEach(function (d) {
+      if (!d.group) return;
+      // Detach first: mutating an attached LayerGroup fires a map layeradd /
+      // layerremove per feature, which re-runs the side-by-side plugin each time.
+      var attached = map.hasLayer(d.group);
+      if (attached) map.removeLayer(d.group);
+
+      d.group.clearLayers();
+      d.count = 0;
+      for (var i = 0; i < d.items.length; i++) {
+        if (d.items[i].score >= t) {
+          d.group.addLayer(d.items[i].layer);
+          d.count++;
+        } else {
+          break;                      // items are sorted by score, descending
+        }
+      }
+
+      if (d.visible) map.addLayer(d.group);
+      countEls[d.id].textContent = d.count;
+    });
+
+    confValue.textContent = t.toFixed(2);
+    updateDetectionClip();
+  }
+
+  // ------------------------------------------------------------- clipping
+  // The plugin only clips one layer per side (and via getContainer(), which
+  // L.GeoJSON has no equivalent of), so mirror its clip rects onto our panes.
+  function updateDetectionClip() {
+    if (!sbs._map || !sbs._range) return;
+    var nw = map.containerPointToLayerPoint([0, 0]);
+    var se = map.containerPointToLayerPoint(map.getSize());
+    var x = nw.x + sbs.getPosition();
+
+    map.getPane('detLeft').style.clip =
+      'rect(' + nw.y + 'px,' + x + 'px,' + se.y + 'px,' + nw.x + 'px)';
+    map.getPane('detRight').style.clip =
+      'rect(' + nw.y + 'px,' + se.x + 'px,' + se.y + 'px,' + x + 'px)';
+  }
+
+  sbs.on('dividermove', updateDetectionClip);
+  map.on('move zoom zoomend viewreset resize', updateDetectionClip);
+
+  // --------------------------------------------------------- divider drag
+  // The plugin's own drag target is its range thumb — a pseudo-element on a
+  // pointer-events:none input with a 0px-tall box, which current Chrome will
+  // not hit-test, so grabs fell straight through and panned the map. This
+  // transparent full-height strip sits on the divider and drives the range.
+  var sbsRange = map.getContainer().querySelector('.leaflet-sbs-range');
+  var grab = L.DomUtil.create('div', '', map.getContainer());
+  grab.id = 'sbsGrab';
+  grab.title = 'Drag to compare';
+
+  function containerX(clientX) {
+    return clientX - map.getContainer().getBoundingClientRect().left;
+  }
+
+  // getPosition() maps range value v to pixels as v * (width - thumb) + thumb/2;
+  // invert that so the divider tracks the cursor exactly.
+  function setDividerX(px) {
+    var thumb = sbs.options.thumbSize + 2 * sbs.options.padding;
+    var span = map.getSize().x - thumb;
+    var v = span > 0 ? (px - thumb / 2) / span : 0.5;
+    sbsRange.value = Math.max(0, Math.min(1, v));
+    sbsRange.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function positionGrab() {
+    grab.style.left = sbs.getPosition() + 'px';
+  }
+
+  var grabOffset = 0;
+  var mapWasDraggable = false;
+
+  grab.addEventListener('pointerdown', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    grab.setPointerCapture(e.pointerId);
+    grab.classList.add('dragging');
+    // Hold the grab point so the divider never jumps on mousedown.
+    grabOffset = sbs.getPosition() - containerX(e.clientX);
+    mapWasDraggable = map.dragging.enabled();
+    map.dragging.disable();
+  });
+
+  grab.addEventListener('pointermove', function (e) {
+    if (!grab.classList.contains('dragging')) return;
+    setDividerX(containerX(e.clientX) + grabOffset);
+  });
+
+  function endGrab(e) {
+    if (!grab.classList.contains('dragging')) return;
+    grab.classList.remove('dragging');
+    if (grab.hasPointerCapture(e.pointerId)) grab.releasePointerCapture(e.pointerId);
+    if (mapWasDraggable) map.dragging.enable();
+  }
+  grab.addEventListener('pointerup', endGrab);
+  grab.addEventListener('pointercancel', endGrab);
+
+  // The range input stays keyboard-reachable; keep the strip on top of it.
+  sbs.on('dividermove', positionGrab);
+  map.on('resize', positionGrab);
+  positionGrab();
+
+  // -------------------------------------------------------------- controls
+  var Panel = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: function () {
+      var el = L.DomUtil.create('div', 'leaflet-control');
+      el.id = 'panel';
+      el.innerHTML = [
+        '<button id="panelHeader" type="button" aria-expanded="true" aria-controls="panelBody">',
+        '  <span>Controls</span><span class="chev" aria-hidden="true">\u25be</span>',
+        '</button>',
+        '<div id="panelBody">',
+        '<section>',
+        '  <h2>Confidence threshold</h2>',
+        '  <div class="conf-row"><label for="conf">Minimum score</label>',
+        '    <span id="confValue">0.60</span></div>',
+        '  <input id="conf" type="range" min="0" max="1" step="0.05" value="0.6"',
+        '         aria-label="Minimum confidence score">',
+        '  <div class="scale"><span>0.00</span><span>0.50</span><span>1.00</span></div>',
+        '</section>',
+        '<section>',
+        '  <h2>Detections at threshold</h2>',
+        '  <div id="counts">',
+        '    <span class="grp">Surviving, Aug 2023: <span class="n" id="countPostfire">—</span> buildings</span>',
+        '    <span class="sep">|</span>',
+        '    <span class="grp">Standing, 2025: <span class="n" id="countRecovery">—</span> buildings</span>',
+        '  </div>',
+        '</section>',
+        '<section>',
+        '  <h2>Layers &amp; legend</h2>',
+        '  <label class="toggle">',
+        '    <input type="checkbox" id="togglePostfire" checked>',
+        '    <span class="swatch postfire"></span>',
+        '    <span class="name">Surviving structures · Aug 2023</span>',
+        '    <span class="side">left</span>',
+        '  </label>',
+        '  <label class="toggle">',
+        '    <input type="checkbox" id="toggleRecovery" checked>',
+        '    <span class="swatch recovery"></span>',
+        '    <span class="name">Standing structures · 2025</span>',
+        '    <span class="side">right</span>',
+        '  </label>',
+        '  <p class="hint">The left layer shows buildings that survived the fire, detected 11 days after.',
+        '     The right layer shows all buildings standing in 2025 — survivors plus anything rebuilt since.',
+        '     Each layer is clipped to its side of the swipe divider. Click a footprint for its confidence score.</p>',
+        '</section>',
+        '</div>'
+      ].join('\n');
+
+      L.DomEvent.disableClickPropagation(el);
+      L.DomEvent.disableScrollPropagation(el);
+      return el;
+    }
+  });
+  map.addControl(new Panel());
+
+  confInput = document.getElementById('conf');
+  confValue = document.getElementById('confValue');
+  DATASETS.forEach(function (d) {
+    countEls[d.id] = document.getElementById(d.countId);
+    document.getElementById(d.toggleId).addEventListener('change', function () {
+      d.visible = this.checked;
+      if (d.group) {
+        if (d.visible) map.addLayer(d.group);
+        else map.removeLayer(d.group);
+      }
+      updateDetectionClip();
+    });
+  });
+  confInput.addEventListener('input', refresh);
+
+  var panelEl = document.getElementById('panel');
+  var panelHeader = document.getElementById('panelHeader');
+  function setCollapsed(on) {
+    panelEl.classList.toggle('collapsed', on);
+    panelHeader.setAttribute('aria-expanded', String(!on));
+  }
+  panelHeader.addEventListener('click', function () {
+    setCollapsed(!panelEl.classList.contains('collapsed'));
+  });
+  // Start out of the way on small screens, where the panel would cover the map.
+  setCollapsed(window.matchMedia('(max-width: 640px)').matches);
+
+  // ------------------------------------------------------------------ load
+  var status = document.getElementById('status');
+
+  function fail(message, detail) {
+    status.hidden = false;
+    status.innerHTML =
+      '<div class="box"><div class="err">' + message + '</div>' +
+      '<div>' + detail + '</div></div>';
+  }
+
+  Promise.all(DATASETS.map(function (d) {
+    return fetch(d.file).then(function (res) {
+      if (!res.ok) throw new Error(d.file + ' → HTTP ' + res.status);
+      return res.json();
+    }).then(function (geojson) {
+      buildLayers(d, geojson);
+    });
+  })).then(function () {
+    status.hidden = true;
+    refresh();
+  }).catch(function (err) {
+    fail('Could not load the detection GeoJSON.',
+      String(err.message || err) +
+      '<br><br>These files are fetched over HTTP, so the page has to be served rather than ' +
+      'opened from <em>file://</em>. From this directory run:' +
+      '<br><code>python3 -m http.server 8000</code><br>then open ' +
+      '<code>http://localhost:8000/</code>');
+  });
+})();
+</script>
+</body>
+</html>
