@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wildfire Analysis Archive — Satellite Burn & Recovery Tracking</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap');
+
+  :root{
+    --char:#0b0d0d;
+    --char-2:#131615;
+    --ash:#8a8f8c;
+    --ash-dim:#565b58;
+    --paper:#e9e6dd;
+    --ember:#e1512e;
+    --ember-dim:#7a2f1c;
+    --recovery:#28c9c2;
+    --recovery-dim:#155753;
+    --line: rgba(233,230,221,0.12);
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  body{
+    background: var(--char);
+    color: var(--paper);
+    font-family: 'IBM Plex Mono', monospace;
+    line-height:1.6;
+  }
+
+  img{ display:block; width:100%; height:100%; object-fit:cover; }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position: relative;
+    min-height: 88vh;
+    display:flex;
+    flex-direction:column;
+    justify-content: flex-end;
+    overflow:hidden;
+  }
+  .hero-media{
+    position:absolute; inset:0;
+  }
+  .hero-media img{
+    filter: saturate(0.75) brightness(0.55) contrast(1.05);
+  }
+  .hero-media::after{
+    content:'';
+    position:absolute; inset:0;
+    background: linear-gradient(180deg, rgba(11,13,13,0.15) 0%, rgba(11,13,13,0.55) 55%, var(--char) 100%);
+  }
+  .hero-content{
+    position:relative;
+    z-index:2;
+    padding: 6vh 6vw 7vh;
+  }
+  .eyebrow{
+    font-size: 0.86rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--ash);
+    display:flex;
+    align-items:center;
+    gap: 0.9em;
+  }
+  .eyebrow::before{
+    content:'';
+    width:8px; height:8px;
+    background: var(--ember);
+    display:inline-block;
+    border-radius:50%;
+    box-shadow: 0 0 12px var(--ember);
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size: clamp(2.4rem, 7vw, 5.2rem);
+    letter-spacing:-0.01em;
+    margin-top: 0.4em;
+    max-width: 18ch;
+  }
+  h1 em{
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ash);
+  }
+  .lede{
+    max-width: 62ch;
+    margin-top: 1.2em;
+    color: var(--paper);
+    opacity:0.85;
+    font-size: 1rem;
+  }
+  .credit{
+    margin-top: 1.6em;
+    font-size: 0.68rem;
+    letter-spacing:0.05em;
+    color: var(--ash-dim);
+  }
+
+  /* ---------- STAT STRIP ---------- */
+  .stats{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .stats .cell{
+    padding: 3em 2em;
+    border-right: 1px solid var(--line);
+  }
+  .stats .cell:last-child{ border-right:none; }
+  .stats .num{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    color: var(--paper);
+  }
+  .stats .num.ember{ color: var(--ember); }
+  .stats .num.recovery{ color: var(--recovery); }
+  .stats .label{
+    margin-top: 0.5em;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ash);
+  }
+  @media (max-width: 720px){
+    .stats{ grid-template-columns: repeat(2, 1fr); }
+    .stats .cell:nth-child(2){ border-right:none; }
+  }
+
+  /* ---------- INTRO ---------- */
+  .intro{
+    padding: 10vh 6vw 9vh;
+    max-width: 78ch;
+    margin: 0 auto;
+    border-bottom: 1px solid var(--line);
+  }
+  .intro .kicker{
+    font-size: 0.7rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+    margin-bottom: 1.6em;
+  }
+  .intro .hook{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-style: italic;
+    font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+    line-height: 1.5;
+    color: var(--paper);
+    max-width: 30ch;
+    margin-bottom: 1.2em;
+  }
+  .intro p{
+    color: var(--ash);
+    font-size: 1.08rem;
+    line-height: 1.85;
+    margin-bottom: 1.5em;
+  }
+  .intro p.fine{
+    font-size: 0.88rem;
+    color: var(--ash-dim);
+  }
+  .intro strong{
+    color: var(--paper);
+    font-weight: 600;
+  }
+
+  /* ---------- CASE STUDY FULL-BLEED BLOCKS ---------- */
+  .case{
+    position: relative;
+    min-height: 78vh;
+    display:flex;
+    align-items:flex-end;
+    overflow:hidden;
+    border-bottom: 1px solid var(--line);
+  }
+  .case-media{
+    position:absolute; inset:0;
+  }
+  .case-media img{
+    filter: saturate(0.8) brightness(0.5);
+    transition: transform 8s ease, filter 0.6s ease;
+  }
+  .case:hover .case-media img{
+    transform: scale(1.04);
+    filter: saturate(0.95) brightness(0.6);
+  }
+  .case-media::after{
+    content:'';
+    position:absolute; inset:0;
+    background: linear-gradient(0deg, rgba(11,13,13,0.94) 0%, rgba(11,13,13,0.35) 55%, rgba(11,13,13,0.1) 100%);
+  }
+  .case-body{
+    position:relative;
+    z-index:2;
+    padding: 5vh 6vw 6vh;
+    width:100%;
+    max-width: 900px;
+  }
+  .case.b .case-body{ margin-left:auto; text-align:right; }
+
+  .tag{
+    font-size:0.68rem;
+    letter-spacing:0.28em;
+    text-transform:uppercase;
+    color: var(--ash);
+    display:flex; gap: 1.5em;
+    margin-bottom: 1.2em;
+  }
+  .case.b .tag{ justify-content:flex-end; }
+  .case.a .tag span:first-child{ color: var(--ember); }
+  .case.b .tag span:first-child{ color: var(--recovery); }
+
+  .case h2{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    margin-bottom: 0.5em;
+  }
+
+  .stat-row{
+    display:flex;
+    gap: 2.4em;
+    margin: 1.4em 0;
+  }
+  .case.b .stat-row{ justify-content:flex-end; }
+  .stat .num{
+    font-family:'Fraunces', serif;
+    font-size: 1.8rem;
+    font-weight:600;
+  }
+  .case.a .stat .num{ color: var(--ember); }
+  .case.b .stat .num{ color: var(--recovery); }
+  .stat .label{
+    font-size: 0.65rem;
+    color: var(--ash);
+    letter-spacing: 0.08em;
+    text-transform:uppercase;
+  }
+
+  .desc{
+    color: var(--paper);
+    opacity:0.8;
+    font-size: 0.92rem;
+    max-width: 56ch;
+    margin-bottom: 1.8em;
+  }
+  .case.b .desc{ margin-left:auto; }
+
+  .open{
+    display:inline-flex;
+    align-items:center;
+    gap:0.6em;
+    text-decoration:none;
+    color: var(--paper);
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 1em 1.4em;
+    border: 1px solid var(--paper);
+    transition: all 0.2s ease;
+  }
+  .case.a .open:hover{ background: var(--ember); border-color: var(--ember); color: var(--char); }
+  .case.b .open:hover{ background: var(--recovery); border-color: var(--recovery); color: var(--char); }
+  .open::after{ content:'→'; transition: transform 0.2s ease; }
+  .open:hover::after{ transform: translateX(4px); }
+
+  .img-credit{
+    position:absolute;
+    bottom: 1em; left: 6vw;
+    z-index:3;
+    font-size: 0.62rem;
+    color: rgba(233,230,221,0.5);
+    letter-spacing: 0.05em;
+  }
+  .case.b .img-credit{ left:auto; right:6vw; }
+
+  footer{
+    padding: 3em 6vw 5vh;
+    color: var(--ash-dim);
+    font-size: 0.72rem;
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:1em;
+  }
+
+  @media (max-width: 720px){
+    .case-body{ max-width:100%; }
+    .case.b .case-body{ text-align:left; margin-left:0; }
+    .case.b .tag{ justify-content:flex-start; }
+    .case.b .stat-row{ justify-content:flex-start; }
+    .case.b .desc{ margin-left:0; }
+    .case.b .img-credit{ right:auto; left:6vw; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-media">
+    <img src="https://assets.science.nasa.gov/dynamicimage/assets/science/esd/eo/images/imagerecords/153000/153831/lafires653_oli2_20250114_lrg.jpg?w=2000" alt="False-color satellite image of the Palisades fire burn scar, Los Angeles, January 2025">
+  </div>
+  <div class="hero-content">
+    <div class="eyebrow">geospatial disaster analysis · fire-cost</div>
+    <h1>Fire moves fast.<br><em>Recovery doesn't.</em></h1>
+    <p class="lede">A wildfire can consume a neighborhood in hours. What comes after — mapping the damage, tracking what's rebuilt, what's abandoned — takes years. This archive follows both timescales: the Palisades &amp; Eaton fires, mapped from satellite data in the days after they burned, and Lahaina, still being counted building by building two years on.</p>
+    <p class="credit">Background: Landsat 9 false-color image of the Palisades fire burn scar, Jan 14 2025 — NASA Earth Observatory</p>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="cell">
+    <div class="num recovery">Aug 2023</div>
+    <div class="label">Lahaina, Maui</div>
+  </div>
+  <div class="cell">
+    <div class="num ember">Jan 2025</div>
+    <div class="label">Palisades &amp; Eaton, LA</div>
+  </div>
+  <div class="cell">
+    <div class="num">28,462</div>
+    <div class="label">acres burned, LA fires</div>
+  </div>
+  <div class="cell">
+    <div class="num">848 → 952</div>
+    <div class="label">buildings tracked, Lahaina</div>
+  </div>
+</div>
+
+<section class="intro">
+  <div class="kicker">About this archive</div>
+  <p class="hook">A fire's damage gets counted twice — once while it's still burning, and again, much later, when the question changes.</p>
+  <p>In the days right after a fire, the priority is figuring out how bad it is and where. Much later, the question shifts from "how much burned" to "what's actually coming back."</p>
+  <p>The <strong>Palisades &amp; Eaton</strong> case study belongs to the first kind of count. It's a from-scratch satellite burn-severity analysis — pulling Sentinel-2 imagery, computing a differenced Normalized Burn Ratio (dNBR), and mapping the fire scar without waiting on any official damage assessment. The question here is how close open data and open-source tools alone can get to the official numbers.</p>
+  <p>The <strong>Lahaina</strong> case study belongs to the second kind. Instead of the fire, it tracks individual building footprints — comparing what was still standing eleven days after the August 2023 fire against what was standing again in 2025. Two years is not long enough to finish rebuilding a town; drag the divider on that map and you can see exactly how far short of "recovered" it still is.</p>
+  <p class="fine">A note on the numbers: the building counts on this page are raw detections from a computer-vision model reading satellite imagery, not an official survey. The 848 → 952 figure is the net change in detected building footprints between the two dates — a reasonable proxy for rebuilding activity, not a precise count of which structures were rebuilt.</p>
+</section>
+
+<div class="case a">
+  <div class="case-media">
+    <img src="https://assets.science.nasa.gov/dynamicimage/assets/science/esd/eo/images/imagerecords/153000/153831/lafires_oli2_20250114_lrg.jpg?w=2000" alt="Landsat 9 natural-color image of the Palisades fire burn area, Los Angeles, January 14 2025">
+  </div>
+  <div class="img-credit">Landsat 9 · NASA Earth Observatory, Jan 14 2025</div>
+  <div class="case-body">
+    <div class="tag"><span>Case 01</span><span>Los Angeles, CA</span></div>
+    <h2>Palisades &amp; Eaton Fires</h2>
+    <div class="stat-row">
+      <div class="stat"><div class="num">28,462</div><div class="label">acres burned</div></div>
+      <div class="stat"><div class="num">Jan '25</div><div class="label">event date</div></div>
+    </div>
+    <p class="desc">A satellite burn-severity analysis using free Sentinel-2 imagery and open-source dNBR methods — mapping 115.18 km² of fire scar and comparing our independent estimate against official reported acreage.</p>
+    <a class="open" href="palisades_eaton_fires_2025.html">Open the analysis</a>
+  </div>
+</div>
+
+<div class="case b">
+  <div class="case-media">
+    <img src="https://assets.science.nasa.gov/dynamicimage/assets/science/esd/eo/images/imagerecords/151000/151688/mauiswir_oli_2023221_lrg.jpg?w=2000" alt="Landsat 8 image of the active Lahaina wildfire, Maui, August 8 2023, shown in shortwave infrared">
+  </div>
+  <div class="img-credit">Landsat 8 · NASA Earth Observatory, Aug 8 2023</div>
+  <div class="case-body">
+    <div class="tag"><span>Case 02</span><span>Lahaina, Maui</span></div>
+    <h2>Lahaina Wildfire Recovery</h2>
+    <div class="stat-row">
+      <div class="stat"><div class="num">848 → 952</div><div class="label">buildings tracked</div></div>
+      <div class="stat"><div class="num">2023 – 2025</div><div class="label">timespan</div></div>
+    </div>
+    <p class="desc">A side-by-side comparison map of Lahaina's building footprints — the post-fire state from August 2023 against the 2025 recovery survey — swipeable, building by building.</p>
+    <a class="open" href="lahaina_wildfire_2023.html">Open the comparison map</a>
+  </div>
+</div>
+
+<footer>
+  <span>Satellite imagery: NASA Earth Observatory (public domain, U.S. Government work). Building-recovery analysis built from open satellite data &amp; municipal surveys.</span>
+</footer>
+
+</body>
+</html>
